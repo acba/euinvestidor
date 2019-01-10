@@ -1,4 +1,5 @@
 # encoding=utf8
+import os
 
 import pandas as pd
 import numpy as np
@@ -20,6 +21,10 @@ analise = {
     'bancos': '35',
     'eletricas': '32',
 }
+
+path = './dados/'
+if not os.path.exists(path):
+    os.makedirs(path)
 
 writer = pd.ExcelWriter('dados/analise_{}.xlsx'.format(tipo_analise))
 if tipo_analise == 'geral':
