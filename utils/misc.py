@@ -55,7 +55,7 @@ def get_table(url):
         'liq.2meses': 'liquidez',
         'patrim. líq': 'patrimonio',
         'dív.brut/ patrim.': 'div/pat',
-        'cresc. rec.5a': 'cresc5a'        
+        'cresc. rec.5a': 'cresc5a'
     }
     tb = tb.rename(index=str, columns=dicionario)
 
@@ -110,7 +110,37 @@ def get_tb_num_graham(tb):
 
     df['graham'] = np.sqrt(22.5 / (df['p/l'] * df['p/vp'])) * df['preco']
     df['desconto'] = df['preco'] / df['graham']
+    df['upside'] = 100 * ((df['graham'] / df['preco']) - 1)
+
     df = df[df['preco'] < df['graham']].sort_values(by=['desconto'], ascending=True)
+
+    return df
+
+def get_tb_num_graham3(tb):
+    df = tb.copy()
+
+    df = df[df['p/l'] > 0]
+    df = df[df['p/vp'] > 0]
+    df = df[df['liquidez'] > 10000]
+
+    df['graham'] = np.sqrt(22.5 / (df['p/l'] * df['p/vp'])) * df['preco']
+    df['desconto'] = df['preco'] / df['graham']
+    df['upside'] = 100 * ((df['graham'] / df['preco']) - 1)
+
+    df = df[df['preco'] < 1.5 * df['graham']]
+
+    df = df.sort_values(by=['upside'], ascending=False)
+    df['rank_upside'] = pd.Series(np.arange(df.shape[0]), index=df.index)
+
+    df = df.sort_values(by=['p/l'])
+    df['rank_pl'] = pd.Series(np.arange(df.shape[0]), index=df.index)
+
+    df = df.sort_values(by=['roe'], ascending=False)
+    df['rank_roe'] = pd.Series(np.arange(df.shape[0]), index=df.index)
+
+    df['rank'] = df['rank_pl'] + df['rank_roe'] + df['rank_upside']
+
+    df = df.sort_values(by=['rank'], ascending=True)
 
     return df
 
