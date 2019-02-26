@@ -4,6 +4,9 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 import requests
+import ipdb
+
+
 
 def _get_setor_code(setor):
     _setor = {
@@ -104,15 +107,23 @@ def _cria_outdir():
 def get_tb_num_graham(tb):
     df = tb.copy()
 
+    df = df[df['cresc5a'] > -5]
+    df = df[df['dy'] > 0]
+    df = df[df['ev/ebit'] >= 0]
     df = df[df['p/l'] > 0]
     df = df[df['p/vp'] > 0]
-    df = df[df['liquidez'] > 10000]
+    df = df[df['roe'] > 7]
+    df = df[df['liquidez'] > 100000]
 
-    df['graham'] = np.sqrt(22.5 / (df['p/l'] * df['p/vp'])) * df['preco']
-    df['desconto'] = df['preco'] / df['graham']
-    df['upside'] = 100 * ((df['graham'] / df['preco']) - 1)
+    df['vi'] = np.sqrt(22.5 / (df['p/l'] * df['p/vp'])) * df['preco']
+    df['ms'] = df['vi'] * .8
+    df['desconto'] = df['preco'] / df['vi']
+    df['upside'] = 100 * ((df['ms'] / df['preco']) - 1)
+    df['ticket'] = df['papel'].str[:4]
 
-    df = df[df['preco'] < df['graham']].sort_values(by=['desconto'], ascending=True)
+    df = df.sort_values(by=['desconto'], ascending=True).reset_index()
+    df = df.groupby(['ticket']).first().reset_index()    
+    df = df.sort_values(by=['desconto'], ascending=True)
 
     return df
 

@@ -33,6 +33,8 @@ misc.add_planilha(out, 'ev_roic', tb_ev_roic)
 
 misc.salva_tabela(out)
 
+tb_graham.to_html('graham.html')
+
 # Calculos intermediarios
 # tb['BUFF']    = tb['P/L'] * tb['P/VP']
 # tb['PEG']     = tb['P/L'] / (tb['Cresc. Rec.5a'])
