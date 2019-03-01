@@ -3,3 +3,5 @@ requests==2.21.0
 openpyxl==2.5.12
 lxml==4.3.0
 ipython==7.2.0
+beautifulsoup4==4.7.1
+html5lib==1.0.1
