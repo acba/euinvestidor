@@ -114,7 +114,7 @@ def get_tb_num_graham_puro(tb):
     df['ticket'] = df['papel'].str[:4]
 
     df = df.sort_values(by=['desconto'], ascending=True).reset_index()
-    df = df.groupby(['ticket']).first().reset_index()    
+    df = df.groupby(['ticket']).first().reset_index()
     df = df.sort_values(by=['desconto'], ascending=True)
 
     return df
@@ -137,7 +137,7 @@ def get_tb_num_graham(tb):
     df['ticket'] = df['papel'].str[:4]
 
     df = df.sort_values(by=['desconto'], ascending=True).reset_index()
-    df = df.groupby(['ticket']).first().reset_index()    
+    df = df.groupby(['ticket']).first().reset_index()
     df = df.sort_values(by=['desconto'], ascending=True)
 
     return df
@@ -223,6 +223,46 @@ def get_tb_ev_roic(tb):
 
     df['rank_ev_roic'] = df['rank_ev'] + df['rank_roic']
     df = df.sort_values(by=['rank_ev_roic'])
+
+    return df
+
+def get_tb_psbe(tb):
+    df = tb.copy()
+
+    df = df[df['liquidez'] > 10000]
+    df = df[df['p/l'] > 0]
+    df = df[df['p/vp'] > 0]
+    df = df[df['ev/ebit'] > 0]
+    df = df[df['dy'] > 0]
+    df = df[df['roe'] > 6]
+
+    # df = df.sort_values(by=['ev/ebit'])
+    # df['rank_ev'] = pd.Series(np.arange(df.shape[0]), index=df.index)
+
+    # df = df.sort_values(by=['roic'], ascending=False)
+    # df['rank_roic'] = pd.Series(np.arange(df.shape[0]), index=df.index)
+
+    # df['rank_ev_roic'] = df['rank_ev'] + df['rank_roic']
+    # df = df.sort_values(by=['rank_ev_roic'])
+
+
+    df['ll'] = (df['roe']/100) * df['patrimonio']
+    df['rl'] = df['ll'] / (df['mrg. líq.']/100)
+    df['n']  = df['ll'] * df['p/l'] / df['preco']
+    df['vm'] = df['n'] * df['preco']
+    cte = 7
+
+    df['psbe'] = (df['patrimonio'] + df['rl'] + df['ll'] * np.exp((df['mrg. líq.']/100) * -1 * np.log(np.abs(df['mrg. líq.']/100)) * cte * np.sign(df['mrg. líq.'])))/ df['n']
+    df['ms'] = df['psbe'] * .8
+    df['upside'] = 100 * ((df['ms'] / df['preco']) - 1)
+
+    df['ticket'] = df['papel'].str[:4]
+
+    df = df.sort_values(by=['upside'], ascending=False).reset_index()
+    df = df.groupby(['ticket']).first().reset_index()
+
+    df = df.sort_values(by=['upside'], ascending=False)
+    df = df.drop(columns=['ll', 'rl', 'n', 'vm', 'ticket', 'index'])
 
     return df
 
