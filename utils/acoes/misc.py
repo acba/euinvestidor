@@ -117,6 +117,8 @@ def get_tb_num_graham_puro(tb):
     df = df.groupby(['ticket']).first().reset_index()
     df = df.sort_values(by=['desconto'], ascending=True)
 
+    df = df.drop(columns=['ticket', 'index'])
+
     return df
 
 def get_tb_num_graham(tb):
@@ -139,6 +141,8 @@ def get_tb_num_graham(tb):
     df = df.sort_values(by=['desconto'], ascending=True).reset_index()
     df = df.groupby(['ticket']).first().reset_index()
     df = df.sort_values(by=['desconto'], ascending=True)
+
+    df = df.drop(columns=['ticket', 'index'])
 
     return df
 
@@ -192,6 +196,8 @@ def get_tb_peg(tb):
 
     df['peg'] = df['p/l'] / df['cresc5a']
     df = df.sort_values(by=['peg'], ascending=True)
+
+    df = df[df['peg'] > 0]
 
     return df
 
