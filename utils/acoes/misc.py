@@ -107,6 +107,10 @@ def _cria_outdir():
 def get_tb_num_graham_puro(tb):
     df = tb.copy()
 
+    df = df[df['p/l'] > 0]
+    df = df[df['p/vp'] > 0]
+    df = df[df['liquidez'] > 100]
+
     df['vi'] = np.sqrt(22.5 / (df['p/l'] * df['p/vp'])) * df['preco']
     df['ms'] = df['vi'] * .8
     df['desconto'] = df['preco'] / df['vi']
@@ -146,21 +150,55 @@ def get_tb_num_graham(tb):
 
     return df
 
-def get_tb_num_graham3(tb):
+
+# def get_tb_num_graham2(tb):
+#     df = tb.copy()
+
+#     df = df[df['p/l'] > 0]
+#     df = df[df['p/vp'] > 0]
+#     df = df[df['liquidez'] > 10000]
+
+#     df['graham'] = df['preco'] / df['p/l'] * (8.5 + 2*df['cresc5a']/5) * 4.4 / 6.5
+#     df['desconto'] = df['preco'] / df['graham']
+#     df = df[df['preco'] < df['graham']].sort_values(by=['desconto'], ascending=True)
+
+#     return df
+
+# def get_tb_num_graham3(tb):
+#     df = tb.copy()
+
+#     df = df[df['p/l'] > 0]
+#     df = df[df['p/vp'] > 0]
+#     df = df[df['liquidez'] > 10000]
+
+#     df['graham'] = np.sqrt(22.5 / (df['p/l'] * df['p/vp'])) * df['preco']
+#     df['desconto'] = df['preco'] / df['graham']
+#     df['upside'] = 100 * ((df['graham'] / df['preco']) - 1)
+
+#     df = df[df['preco'] < 1.5 * df['graham']]
+
+#     df = df.sort_values(by=['upside'], ascending=False)
+#     df['rank_upside'] = pd.Series(np.arange(df.shape[0]), index=df.index)
+
+#     df = df.sort_values(by=['p/l'])
+#     df['rank_pl'] = pd.Series(np.arange(df.shape[0]), index=df.index)
+
+#     df = df.sort_values(by=['roe'], ascending=False)
+#     df['rank_roe'] = pd.Series(np.arange(df.shape[0]), index=df.index)
+
+#     df['rank'] = df['rank_pl'] + df['rank_roe'] + df['rank_upside']
+
+#     df = df.sort_values(by=['rank'], ascending=True)
+
+#     return df
+
+def get_tb_composta(tb):
     df = tb.copy()
 
-    df = df[df['p/l'] > 0]
-    df = df[df['p/vp'] > 0]
-    df = df[df['liquidez'] > 10000]
-
-    df['graham'] = np.sqrt(22.5 / (df['p/l'] * df['p/vp'])) * df['preco']
-    df['desconto'] = df['preco'] / df['graham']
-    df['upside'] = 100 * ((df['graham'] / df['preco']) - 1)
-
-    df = df[df['preco'] < 1.5 * df['graham']]
+    df = get_tb_num_graham(df)
 
     df = df.sort_values(by=['upside'], ascending=False)
-    df['rank_upside'] = pd.Series(np.arange(df.shape[0]), index=df.index)
+    df['rank_graham'] = pd.Series(np.arange(df.shape[0]), index=df.index)
 
     df = df.sort_values(by=['p/l'])
     df['rank_pl'] = pd.Series(np.arange(df.shape[0]), index=df.index)
@@ -168,22 +206,13 @@ def get_tb_num_graham3(tb):
     df = df.sort_values(by=['roe'], ascending=False)
     df['rank_roe'] = pd.Series(np.arange(df.shape[0]), index=df.index)
 
-    df['rank'] = df['rank_pl'] + df['rank_roe'] + df['rank_upside']
 
+    df = get_tb_psbe(df)
+    df = df.sort_values(by=['upside'], ascending=False)
+    df['rank_psbe'] = pd.Series(np.arange(df.shape[0]), index=df.index)
+
+    df['rank'] = df['rank_pl'] + df['rank_roe'] + df['rank_graham'] + df['rank_psbe']
     df = df.sort_values(by=['rank'], ascending=True)
-
-    return df
-
-def get_tb_num_graham2(tb):
-    df = tb.copy()
-
-    df = df[df['p/l'] > 0]
-    df = df[df['p/vp'] > 0]
-    df = df[df['liquidez'] > 10000]
-
-    df['graham'] = df['preco'] / df['p/l'] * (8.5 + 2*df['cresc5a']/5) * 4.4 / 6.5
-    df['desconto'] = df['preco'] / df['graham']
-    df = df[df['preco'] < df['graham']].sort_values(by=['desconto'], ascending=True)
 
     return df
 
@@ -241,6 +270,7 @@ def get_tb_psbe(tb):
     df = df[df['ev/ebit'] > 0]
     df = df[df['dy'] > 0]
     df = df[df['roe'] > 6]
+    df = df[df['cresc5a'] > -5]
 
     # df = df.sort_values(by=['ev/ebit'])
     # df['rank_ev'] = pd.Series(np.arange(df.shape[0]), index=df.index)
