@@ -144,7 +144,7 @@ def get_table_funds_explorer():
     dicionario = {
         'códigodo fundo': 'papel',
         'preço atual': 'preco',
-        'volume (21d)': 'liquidez',
+        'liquidez diária': 'liquidez',
         'dividendyield': 'dy',
         'dy (3m)acumulado': 'dy3a',
         'dy (6m)acumulado': 'dy6a',

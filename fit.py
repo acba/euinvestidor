@@ -23,7 +23,8 @@ dividendos = [
   177.4, 134.2, 285.8,
   157.7, 121.8, 236.5, 
   168.9, 190, 301.2,
-  608.2, 145.5
+  608.2, 145.5, 274.1,
+  276.5, 337.2
 ]
 
 x = np.arange(len(dividendos))
@@ -54,7 +55,7 @@ mmsemestre = np.concatenate((np.zeros(5), moving_average(dividendos, 6), np.zero
 fig, ax = plt.subplots()
 line1, = ax.plot(x_date, div, label='Dividendos')
 line1, = ax.plot(x_date, y1d, label='Fit 1D')
-line1, = ax.plot(x_date, y2d, label='Fit 2D')
+# line1, = ax.plot(x_date, y2d, label='Fit 2D')
 # line1, = ax.plot(x_date, exp, label='Exp')
 line1, = ax.plot(x_date, mmtrimestre, label='Média Móvel 3t')
 line1, = ax.plot(x_date, mmsemestre, label='Média Móvel 6t')

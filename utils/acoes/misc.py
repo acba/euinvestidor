@@ -6,8 +6,6 @@ import numpy as np
 import requests
 import ipdb
 
-
-
 def _get_setor_code(setor):
     _setor = {
         'geral': '',
@@ -107,12 +105,14 @@ def _cria_outdir():
 def get_tb_num_graham_puro(tb):
     df = tb.copy()
 
+    df = df[df['ev/ebit'] >= 0]
     df = df[df['p/l'] > 0]
     df = df[df['p/vp'] > 0]
-    df = df[df['liquidez'] > 100]
+    df = df[df['liquidez'] > 100000]
 
+    ms = .25
     df['vi'] = np.sqrt(22.5 / (df['p/l'] * df['p/vp'])) * df['preco']
-    df['ms'] = df['vi'] * .8
+    df['ms'] = df['vi'] * (1-ms)
     df['desconto'] = df['preco'] / df['vi']
     df['upside'] = 100 * ((df['ms'] / df['preco']) - 1)
     df['ticket'] = df['papel'].str[:4]
@@ -125,7 +125,7 @@ def get_tb_num_graham_puro(tb):
 
     return df
 
-def get_tb_num_graham(tb):
+def get_tb_num_graham_limpa(tb):
     df = tb.copy()
 
     df = df[df['cresc5a'] > -5]
@@ -136,8 +136,32 @@ def get_tb_num_graham(tb):
     df = df[df['roe'] > 7]
     df = df[df['liquidez'] > 100000]
 
+    ms = .25
     df['vi'] = np.sqrt(22.5 / (df['p/l'] * df['p/vp'])) * df['preco']
-    df['ms'] = df['vi'] * .8
+    df['ms'] = df['vi'] * (1-ms)
+    df['desconto'] = df['preco'] / df['vi']
+    df['upside'] = 100 * ((df['ms'] / df['preco']) - 1)
+    df['ticket'] = df['papel'].str[:4]
+
+    df = df.sort_values(by=['desconto'], ascending=True).reset_index()
+    df = df.groupby(['ticket']).first().reset_index()
+    df = df.sort_values(by=['desconto'], ascending=True)
+
+    df = df.drop(columns=['ticket', 'index'])
+
+    return df
+
+def get_tb_graham_ajustado(tb):
+    df = tb.copy()
+
+    df = df[df['ev/ebit'] >= 0]
+    df = df[df['p/l'] > 0]
+    df = df[df['p/vp'] > 0]
+
+
+    tx_livre_risco = 6
+    df['vi'] = (df['preco']/df['p/l']) * (7 + df['cresc5a']) * 4.4 / 6
+    df['ms'] = df['vi'] * .75
     df['desconto'] = df['preco'] / df['vi']
     df['upside'] = 100 * ((df['ms'] / df['preco']) - 1)
     df['ticket'] = df['papel'].str[:4]
@@ -195,7 +219,7 @@ def get_tb_num_graham(tb):
 def get_tb_composta(tb):
     df = tb.copy()
 
-    df = get_tb_num_graham(df)
+    df = get_tb_num_graham_limpa(df)
 
     df = df.sort_values(by=['upside'], ascending=False)
     df['rank_graham'] = pd.Series(np.arange(df.shape[0]), index=df.index)
@@ -269,7 +293,7 @@ def get_tb_psbe(tb):
     df = df[df['p/vp'] > 0]
     df = df[df['ev/ebit'] > 0]
     df = df[df['dy'] > 0]
-    df = df[df['roe'] > 6]
+    # df = df[df['roe'] > 6]
     df = df[df['cresc5a'] > -5]
 
     # df = df.sort_values(by=['ev/ebit'])
@@ -287,10 +311,50 @@ def get_tb_psbe(tb):
     df['n']  = df['ll'] * df['p/l'] / df['preco']
     df['vm'] = df['n'] * df['preco']
     cte = 7
+    # cte = 5.891
 
-    df['psbe'] = (df['patrimonio'] + df['rl'] + df['ll'] * np.exp((df['mrg. líq.']/100) * -1 * np.log(np.abs(df['mrg. líq.']/100)) * cte * np.sign(df['mrg. líq.'])))/ df['n']
-    df['ms'] = df['psbe'] * .8
+    margem_seguranca = .25
+    df['psbe']   = (df['patrimonio'] + df['rl'] + df['ll'] * np.exp((df['mrg. líq.']/100) * -1 * np.log(np.abs(df['mrg. líq.']/100)) * cte * np.sign(df['mrg. líq.'])))/ df['n']
+    df['ms']     = df['psbe'] * (1 - margem_seguranca)
     df['upside'] = 100 * ((df['ms'] / df['preco']) - 1)
+
+    df['psbe']   = df['psbe'].round(2)
+    df['ms']     = df['ms'].round(2)
+    df['upside'] = df['upside'].round(2)
+
+    df['ticket'] = df['papel'].str[:4]
+
+    df = df.sort_values(by=['upside'], ascending=False).reset_index()
+    df = df.groupby(['ticket']).first().reset_index()
+
+    df = df.sort_values(by=['upside'], ascending=False)
+    df = df.drop(columns=['ll', 'rl', 'n', 'vm', 'ticket', 'index'])
+
+    return df
+
+
+def get_tb_psbe_geral(tb):
+    df = tb.copy()
+
+    df = df[df['liquidez'] > 10000]
+    df = df[df['p/l'] > 0]
+    df = df[df['p/vp'] > 0]
+
+    df['ll'] = (df['roe']/100) * df['patrimonio']
+    df['rl'] = df['ll'] / (df['mrg. líq.']/100)
+    df['n']  = df['ll'] * df['p/l'] / df['preco']
+    df['vm'] = df['n'] * df['preco']
+    cte = 7
+    # cte = 5.891
+
+    margem_seguranca = .25
+    df['psbe']   = (df['patrimonio'] + df['rl'] + df['ll'] * np.exp((df['mrg. líq.']/100) * -1 * np.log(np.abs(df['mrg. líq.']/100)) * cte * np.sign(df['mrg. líq.'])))/ df['n']
+    df['ms']     = df['psbe'] * (1 - margem_seguranca)
+    df['upside'] = 100 * ((df['ms'] / df['preco']) - 1)
+
+    df['psbe']   = df['psbe'].round(2)
+    df['ms']     = df['ms'].round(2)
+    df['upside'] = df['upside'].round(2)
 
     df['ticket'] = df['papel'].str[:4]
 
