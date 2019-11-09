@@ -292,8 +292,8 @@ def get_tb_psbe(tb):
     df = df[df['p/l'] > 0]
     df = df[df['p/vp'] > 0]
     df = df[df['ev/ebit'] > 0]
-    df = df[df['dy'] > 0]
-    # df = df[df['roe'] > 6]
+    # df = df[df['dy'] > 0]
+    df = df[df['roe'] > 5]
     df = df[df['cresc5a'] > -5]
 
     # df = df.sort_values(by=['ev/ebit'])
