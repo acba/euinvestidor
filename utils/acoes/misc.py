@@ -268,8 +268,8 @@ def get_tb_psbe(tb):
     df = df[df['p/l'] > 0]
     df = df[df['p/vp'] > 0]
     df = df[df['ev/ebit'] > 0]
-    df = df[df['dy'] > 0]
-    df = df[df['roe'] > 6]
+    # df = df[df['dy'] > 0]
+    df = df[df['roe'] > 5]
     df = df[df['cresc5a'] > -5]
 
     # df = df.sort_values(by=['ev/ebit'])
@@ -286,7 +286,8 @@ def get_tb_psbe(tb):
     df['rl'] = df['ll'] / (df['mrg. líq.']/100)
     df['n']  = df['ll'] * df['p/l'] / df['preco']
     df['vm'] = df['n'] * df['preco']
-    cte = 7
+    # cte = 7
+    cte = 5.891078823
 
     df['psbe'] = (df['patrimonio'] + df['rl'] + df['ll'] * np.exp((df['mrg. líq.']/100) * -1 * np.log(np.abs(df['mrg. líq.']/100)) * cte * np.sign(df['mrg. líq.'])))/ df['n']
     df['ms'] = df['psbe'] * .8
