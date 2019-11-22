@@ -6,6 +6,12 @@ import numpy as np
 import requests
 import ipdb
 
+
+ROE_THRESHOLD = 5
+LIQUIDEZ_THRESHOLD = 1000
+PL_THRESHOLD = 0
+PVP_THRESHOLD = 0
+
 def _get_setor_code(setor):
     _setor = {
         'geral': '',
@@ -105,10 +111,10 @@ def _cria_outdir():
 def get_tb_num_graham_puro(tb):
     df = tb.copy()
 
-    df = df[df['ev/ebit'] >= 0]
+    df = df[df['ev/ebitda'] >= 0]
     df = df[df['p/l'] > 0]
     df = df[df['p/vp'] > 0]
-    df = df[df['liquidez'] > 100000]
+    df = df[df['liquidez'] > 1000]
 
     ms = .25
     df['vi'] = np.sqrt(22.5 / (df['p/l'] * df['p/vp'])) * df['preco']
@@ -130,11 +136,11 @@ def get_tb_num_graham_limpa(tb):
 
     df = df[df['cresc5a'] > -5]
     df = df[df['dy'] > 0]
-    df = df[df['ev/ebit'] >= 0]
+    df = df[df['ev/ebitda'] >= 0]
     df = df[df['p/l'] > 0]
     df = df[df['p/vp'] > 0]
     df = df[df['roe'] > 7]
-    df = df[df['liquidez'] > 100000]
+    df = df[df['liquidez'] > 1000]
 
     ms = .25
     df['vi'] = np.sqrt(22.5 / (df['p/l'] * df['p/vp'])) * df['preco']
@@ -154,7 +160,7 @@ def get_tb_num_graham_limpa(tb):
 def get_tb_graham_ajustado(tb):
     df = tb.copy()
 
-    df = df[df['ev/ebit'] >= 0]
+    df = df[df['ev/ebitda'] >= 0]
     df = df[df['p/l'] > 0]
     df = df[df['p/vp'] > 0]
 
@@ -180,7 +186,7 @@ def get_tb_graham_ajustado(tb):
 
 #     df = df[df['p/l'] > 0]
 #     df = df[df['p/vp'] > 0]
-#     df = df[df['liquidez'] > 10000]
+#     df = df[df['liquidez'] > 1000]
 
 #     df['graham'] = df['preco'] / df['p/l'] * (8.5 + 2*df['cresc5a']/5) * 4.4 / 6.5
 #     df['desconto'] = df['preco'] / df['graham']
@@ -193,7 +199,7 @@ def get_tb_graham_ajustado(tb):
 
 #     df = df[df['p/l'] > 0]
 #     df = df[df['p/vp'] > 0]
-#     df = df[df['liquidez'] > 10000]
+#     df = df[df['liquidez'] > 1000]
 
 #     df['graham'] = np.sqrt(22.5 / (df['p/l'] * df['p/vp'])) * df['preco']
 #     df['desconto'] = df['preco'] / df['graham']
@@ -245,7 +251,7 @@ def get_tb_peg(tb):
 
     df = df[df['p/l'] > 0]
     df = df[df['p/vp'] > 0]
-    df = df[df['liquidez'] > 10000]
+    df = df[df['liquidez'] > 1000]
 
     df['peg'] = df['p/l'] / df['cresc5a']
     df = df.sort_values(by=['peg'], ascending=True)
@@ -258,7 +264,7 @@ def get_tb_bazim(tb):
     df = tb.copy()
 
     df = df[df['dy'] > 6]
-    df = df[df['liquidez'] > 10000]
+    df = df[df['liquidez'] > 1000]
     df = df[df['div/pat'] < 3]
 
     df['desconto'] = df['p/l'] / 16.666
@@ -269,12 +275,12 @@ def get_tb_bazim(tb):
 def get_tb_ev_roic(tb):
     df = tb.copy()
 
-    df = df[df['liquidez'] > 10000]
+    df = df[df['liquidez'] > 1000]
     df = df[df['p/l'] > 0]
     df = df[df['p/vp'] > 0]
-    df = df[df['ev/ebit'] > 0]
+    df = df[df['ev/ebitda'] >= 0]
 
-    df = df.sort_values(by=['ev/ebit'])
+    df = df.sort_values(by=['ev/ebitda'])
     df['rank_ev'] = pd.Series(np.arange(df.shape[0]), index=df.index)
 
     df = df.sort_values(by=['roic'], ascending=False)
@@ -288,15 +294,15 @@ def get_tb_ev_roic(tb):
 def get_tb_psbe(tb):
     df = tb.copy()
 
-    df = df[df['liquidez'] > 10000]
+    df = df[df['liquidez'] > 1000]
     df = df[df['p/l'] > 0]
     df = df[df['p/vp'] > 0]
-    df = df[df['ev/ebit'] > 0]
-    df = df[df['dy'] > 0]
-    # df = df[df['roe'] > 6]
+    df = df[df['ev/ebitda'] >= 0]
+    # df = df[df['dy'] > 0]
+    df = df[df['roe'] > 5]
     df = df[df['cresc5a'] > -5]
 
-    # df = df.sort_values(by=['ev/ebit'])
+    # df = df.sort_values(by=['ev/ebitda'])
     # df['rank_ev'] = pd.Series(np.arange(df.shape[0]), index=df.index)
 
     # df = df.sort_values(by=['roic'], ascending=False)
@@ -332,11 +338,64 @@ def get_tb_psbe(tb):
 
     return df
 
+def get_tb_fcd(tb):
+    df = tb.copy()
+
+    df = df[df['liquidez'] > 1000]
+    df = df[df['p/l'] > 0]
+    df = df[df['p/vp'] > 0]
+    df = df[df['ev/ebitda'] >= 0]
+    df = df[df['roe'] > 5]
+    df = df[df['cresc5a'] > -5]
+
+    df['lpa'] = df['preco'] / df['p/l']
+    tx_desconto = .09
+    tx_perpetuidade = .02
+    delta = tx_desconto - tx_perpetuidade
+
+    crescimento_ano_1 = .07
+    crescimento_ano_2 = .07
+    crescimento_ano_3 = .07
+    crescimento_ano_4 = .07
+    crescimento_ano_5 = .07
+
+    f1 = (np.power(1 + crescimento_ano_1, 1) / np.power(1+tx_desconto, 1))
+    f2 = (np.power(1 + crescimento_ano_2, 2) / np.power(1+tx_desconto, 2))
+    f3 = (np.power(1 + crescimento_ano_3, 3) / np.power(1+tx_desconto, 3))
+    f4 = (np.power(1 + crescimento_ano_4, 4) / np.power(1+tx_desconto, 4))
+    f5 = (np.power(1 + crescimento_ano_5, 5) / np.power(1+tx_desconto, 5))
+    fator_fixo = (1 + tx_desconto) / delta
+
+    df['preco_ano_1'] = df['lpa'] * f1 * fator_fixo
+    df['preco_ano_2'] = df['lpa'] * (f1 + f2 * fator_fixo )
+    df['preco_ano_3'] = df['lpa'] * (f1 + f2 + f3 * fator_fixo )
+    df['preco_ano_4'] = df['lpa'] * (f1 + f2 + f3 + f4 * fator_fixo )
+    df['preco_ano_5'] = df['lpa'] * (f1 + f2 + f3 + f4 + f5 * fator_fixo )
+    
+    margem_seguranca = .25
+    
+    df['ms']     = df['preco_ano_5'] * (1 - margem_seguranca)
+    df['upside'] = 100 * ((df['ms'] / df['preco']) - 1)
+
+    df['preco_ano_5'] = df['preco_ano_5'].round(2)
+    df['ms']     = df['ms'].round(2)
+    df['upside'] = df['upside'].round(2)
+
+    df['ticket'] = df['papel'].str[:4]
+
+    df = df.sort_values(by=['upside'], ascending=False).reset_index()
+    df = df.groupby(['ticket']).first().reset_index()
+
+    df = df.sort_values(by=['upside'], ascending=False)
+    df = df.drop(columns=['ticket', 'index'])
+
+    return df
+
 
 def get_tb_psbe_geral(tb):
     df = tb.copy()
 
-    df = df[df['liquidez'] > 10000]
+    df = df[df['liquidez'] > 1000]
     df = df[df['p/l'] > 0]
     df = df[df['p/vp'] > 0]
 

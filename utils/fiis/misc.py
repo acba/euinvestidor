@@ -166,7 +166,7 @@ def get_table_funds_explorer():
     }
     tb_fs = tb_fs.rename(index=str, columns=dicionario)
 
-
+    tb_fs['preco']              = _conv_col_to_num(tb_fs['preco'])
     tb_fs['dividendo']          = _conv_col_to_num(tb_fs['dividendo'])
     tb_fs['dy']                 = _conv_col_to_num(tb_fs['dy'])
 
@@ -201,6 +201,28 @@ def get_table_funds_explorer():
 
     return tb_fs
 
+
+def get_tb_upside(tb):
+    df = tb.copy()
+
+    df = df[df['dyano'] > 0]
+    df = df[df['liquidez'] > 0]
+    df = df[df['p/vpa'] > 0]
+
+    idka_pre_1a = 6.5799
+    ir = 0.175
+    premio = 2
+    ms = .2
+
+    txminima_anual = idka_pre_1a * (1 - ir) + premio
+    txminima_mensal = (np.power( 1 + txminima_anual/100, 1/12 ) - 1)*100
+    distribuicao_media_mensal = df['preco'] * (df['dy12m']/100)
+    
+    df['vi'] = distribuicao_media_mensal / (txminima_mensal/100)
+    df['ms'] = df['vi'] * (1 - ms)
+    df['upside'] = 100 * ((df['ms'] / df['preco']) - 1)
+
+    return df
 
 def get_tb_pvpa_rent(tb):
     df = tb.copy()
