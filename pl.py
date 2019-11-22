@@ -21,7 +21,7 @@ def formata_data(dado):
     return [datetime(ano, mes, dia), dado[1]]
 
 
-ativo = 'ABEV3'
+ativo = 'MDIA3'
 url = f'https://www.oceans14.com.br/rendaVariavel/respostaAjax/gHistoricoPl.aspx?papel={ativo}&periodo=5a'
 
 headers = {
@@ -60,5 +60,13 @@ if response.status_code == 200:
 
         print(f'PL - [{pl_min} {pl_max}]')
 
+        ultimo = df.tail(1)
+        # import ipdb; ipdb.set_trace()
+        print()
+        print(f'Sobrepreço em relação ao PLmin:',  ultimo['pl'] / pl_min)
+        print(f'Sobrepreço em relação ao PLmax:', ultimo['pl'] / pl_max)
+        print()
+        print(f'Sobrepreço em relação ao PL30d:', ultimo['pl'] / ultimo['30d'])
+        print(f'Sobrepreço em relação ao PL90d:', ultimo['pl'] / ultimo['90d'])
+        print(f'Sobrepreço em relação ao PL200d:', ultimo['pl'] / ultimo['200d'])
 
-# fetch( {"credentials":"include","headers":{"accept":"application/json, text/javascript, */*; q=0.01","accept-language":"en-US,en;q=0.9,pt-BR;q=0.8,pt;q=0.7","cache-control":"no-cache","pragma":"no-cache","sec-fetch-mode":"cors","sec-fetch-site":"same-origin","x-requested-with":"XMLHttpRequest"},"referrer":"https://www.oceans14.com.br/acoes/itausa/itsa/balanco-dividendos","referrerPolicy":"no-referrer-when-downgrade","body":null,"method":"GET","mode":"cors"});
