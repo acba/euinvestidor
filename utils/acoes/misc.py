@@ -1,91 +1,30 @@
 import os
 from pathlib import Path
+from enum import Enum
 
 import pandas as pd
 import numpy as np
 import requests
 import ipdb
 
+import utils.acoes.fundamentus as fundamentus
+import utils.acoes.statusinvest as statusinvest
 
 ROE_THRESHOLD = 5
 LIQUIDEZ_THRESHOLD = 1000
 PL_THRESHOLD = 0
 PVP_THRESHOLD = 0
 
-def _get_setor_code(setor):
-    _setor = {
-        'geral': '',
-        'Petróleo, Gás e Biocombustíveis': '1',
-        'Mineração': '2',
-        'Previdência e Seguros': '38',
-        'Alimentos': '15',
-        'bancos': '35',
-        'eletricas': '32',
-    }
-    try:
-        return _setor[setor]
+class Fontes(Enum):
+    FUNDAMENTUS = 0
+    STATUSINVEST = 1
 
-    except KeyError:
-        return None
+def get_table(setor='geral', fonte=Fontes.FUNDAMENTUS):
 
-
-def get_url(setor_analise):
-    code = _get_setor_code(setor_analise)
-
-    url = None
-    if setor_analise == 'geral':
-        url = 'http://www.fundamentus.com.br/resultado.php'
-    else:
-        url = f'http://www.fundamentus.com.br/resultado.php?setor={code}'
-
-    return url
-
-def _conv_column(col):
-    return pd.to_numeric(col.str.replace('.', '').str.replace('%', '').str.replace(',', '.'))
-
-def get_table(url):
-
-    headers = {
-        'Pragma': 'no-cache',
-        'Cache-Control': 'no-cache',
-    }
-
-    response = requests.get(url, headers=headers)
-
-    tb = pd.read_html(response.text, decimal=",", thousands=".")[0]
-    tb = tb.rename(str.lower, axis='columns')
-    tb = tb.drop(columns=['p/ativo', 'p/cap.giro', 'p/ebit', 'p/ativ circ.liq', 'liq. corr.', 'psr'])
-
-    dicionario = {
-        "cotação": "preco",
-        'div.yield': 'dy',
-        'liq.2meses': 'liquidez',
-        'patrim. líq': 'patrimonio',
-        'dív.brut/ patrim.': 'div/pat',
-        'cresc. rec.5a': 'cresc5a'
-    }
-    tb = tb.rename(index=str, columns=dicionario)
-
-    tb              = tb[tb['liquidez'] > 0]
-
-    tb['dy']        = _conv_column(tb['dy'])
-    tb['mrg ebit']  = _conv_column(tb['mrg ebit'])
-    tb['mrg. líq.'] = _conv_column(tb['mrg. líq.'])
-    tb['roic']      = _conv_column(tb['roic'])
-    tb['roe']       = _conv_column(tb['roe'])
-    tb['cresc5a']   = _conv_column(tb['cresc5a'])
-
-    print(tb.head())
-    print(tb.dtypes)
-
-    # # Tratando dados
-    # tb['Mrg Ebit']      = pd.to_numeric(tb['Mrg Ebit'].str.replace('.', '').str.replace('%','').str.replace(',','.'))
-    # tb['Mrg. Líq.']     = pd.to_numeric(tb['Mrg. Líq.'].str.replace('.', '').str.replace('%','').str.replace(',','.'))
-    # tb['ROIC']          = pd.to_numeric(tb['ROIC'].str.replace('.', '').str.replace('%','').str.replace(',','.'))
-    # tb['ROE']           = pd.to_numeric(tb['ROE'].str.replace('.', '').str.replace('%','').str.replace(',','.'))
-    # tb['Cresc. Rec.5a'] = pd.to_numeric(tb['Cresc. Rec.5a'].str.replace('.', '').str.replace('%','').str.replace(',','.'))
-
-    return tb
+    if fonte == Fontes.FUNDAMENTUS:
+        return fundamentus.get_table(setor)
+    elif fonte == Fontes.STATUSINVEST:
+        return statusinvest.get_table(setor)
 
 def cria_tabela(filename):
     _cria_outdir()
@@ -350,14 +289,17 @@ def get_tb_fcd(tb):
 
     df['lpa'] = df['preco'] / df['p/l']
     tx_desconto = .09
-    tx_perpetuidade = .02
+    tx_perpetuidade = .03
     delta = tx_desconto - tx_perpetuidade
 
-    crescimento_ano_1 = .07
-    crescimento_ano_2 = .07
-    crescimento_ano_3 = .07
-    crescimento_ano_4 = .07
-    crescimento_ano_5 = .07
+    tx_crescimento = df['cresc5a']/100
+    tx_crescimento[tx_crescimento > 30] *=.6
+
+    crescimento_ano_1 = tx_crescimento
+    crescimento_ano_2 = tx_crescimento * .9
+    crescimento_ano_3 = tx_crescimento * .9  * .9
+    crescimento_ano_4 = tx_crescimento * .9  * .9 * .9
+    crescimento_ano_5 = tx_crescimento * .9  * .9 * .9 * .9
 
     f1 = (np.power(1 + crescimento_ano_1, 1) / np.power(1+tx_desconto, 1))
     f2 = (np.power(1 + crescimento_ano_2, 2) / np.power(1+tx_desconto, 2))
@@ -377,6 +319,11 @@ def get_tb_fcd(tb):
     df['ms']     = df['preco_ano_5'] * (1 - margem_seguranca)
     df['upside'] = 100 * ((df['ms'] / df['preco']) - 1)
 
+    df['lpa'] = df['lpa'].round(2)
+    df['preco_ano_1'] = df['preco_ano_1'].round(2)
+    df['preco_ano_2'] = df['preco_ano_2'].round(2)
+    df['preco_ano_3'] = df['preco_ano_3'].round(2)
+    df['preco_ano_4'] = df['preco_ano_4'].round(2)
     df['preco_ano_5'] = df['preco_ano_5'].round(2)
     df['ms']     = df['ms'].round(2)
     df['upside'] = df['upside'].round(2)
