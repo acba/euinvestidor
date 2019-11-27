@@ -15,7 +15,6 @@ tb_si = misc.get_table(setor, fonte=Fontes.STATUSINVEST)
 nome = f'analise_{setor}.xlsx'
 out = misc.cria_tabela(nome)
 
-# tb_graham_puro  = misc.get_tb_num_graham_puro(tb_geral)
 # tb_graham_limpo = misc.get_tb_num_graham_limpa(tb_geral)
 # tb_graham_ajustado       = misc.get_tb_graham_ajustado(tb_geral)
 # # tb_graham2      = misc.get_tb_num_graham2(tb_geral)
@@ -30,6 +29,8 @@ out = misc.cria_tabela(nome)
 
 misc.add_planilha(out, 'fundamentus', tb_fundamentus)
 misc.add_planilha(out, 'statusinvest', tb_si)
+
+misc.add_planilha(out, 'f_graham', misc.get_tb_num_graham_puro(tb_fundamentus))
 # misc.add_planilha(out, 'tb_graham_puro', tb_graham_puro)
 # misc.add_planilha(out, 'tb_graham_limpo', tb_graham_limpo)
 # misc.add_planilha(out, 'graham_ajustado', tb_graham_ajustado)
@@ -42,6 +43,10 @@ misc.add_planilha(out, 'statusinvest', tb_si)
 # misc.add_planilha(out, 'psbe_geral', tb_psbe_geral)
 # misc.add_planilha(out, 'fcd', tb_fcd)
 # misc.add_planilha(out, 'composto', tb_composto)
+
+# Status Invest
+
+misc.add_planilha(out, 'si_graham', misc.get_tb_num_graham_puro(tb_si))
 
 misc.salva_tabela(out)
 

@@ -1,6 +1,7 @@
 import pandas as pd
 import requests
 
+
 def _get_setor_code(setor):
     _setor = {
         'geral': '',
@@ -29,8 +30,10 @@ def get_url(setor):
 
     return url
 
+
 def _conv_column(col):
     return pd.to_numeric(col.str.replace('.', '').str.replace('%', '').str.replace(',', '.'))
+
 
 def get_table(setor):
 
@@ -61,18 +64,19 @@ def get_table(setor):
     }
     tb = tb.rename(index=str, columns=dicionario)
 
+    tb = tb[tb['liquidez'] > 1000]
 
-    tb              = tb[tb['liquidez'] > 0]
-
-    tb['dy']        = _conv_column(tb['dy'])
-    tb['margemEbit']  = _conv_column(tb['margemEbit'])
+    tb['dy'] = _conv_column(tb['dy'])
+    tb['margemEbit'] = _conv_column(tb['margemEbit'])
     tb['margemLiquida'] = _conv_column(tb['margemLiquida'])
-    tb['roic']      = _conv_column(tb['roic'])
-    tb['roe']       = _conv_column(tb['roe'])
-    tb['cresc5_rl']   = _conv_column(tb['cresc5_rl'])
+    tb['roic'] = _conv_column(tb['roic'])
+    tb['roe'] = _conv_column(tb['roe'])
+    tb['cresc5_rl'] = _conv_column(tb['cresc5_rl'])
 
-    ordem = ['ticker', 'preco', 'p/l', 'p/vp', 'ev/ebitda', 'dy', 'roe', 'margemLiquida', 'margemEbit', 'cresc5_rl']
+    ordem = ['ticker', 'preco', 'p/l', 'p/vp', 'ev/ebitda',
+             'dy', 'roe', 'margemLiquida', 'margemEbit', 'cresc5_rl']
     resto = list(set(tb.columns.tolist()) - set(ordem))
+
     tb = tb[ordem + resto]
 
     print(tb.head())
