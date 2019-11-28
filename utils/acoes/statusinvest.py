@@ -30,6 +30,8 @@ def get_table(url):
     }
     tb = tb.rename(index=str, columns=dicionario)
 
+    tb = tb[tb['preco'] > 0]
+
     ordem = ['ticker', 'preco', 'p/l', 'p/vp', 'ev/ebit', 'dy', 'roe', 'margemBruta', 'margemLiquida', 'margemEbit', 'cagr5_receita', 'cagr5_lucro']
     resto = list(set(tb.columns.tolist()) - set(ordem))
 

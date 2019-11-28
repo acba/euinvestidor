@@ -30,7 +30,10 @@ out = misc.cria_tabela(nome)
 misc.add_planilha(out, 'fundamentus', tb_fundamentus)
 misc.add_planilha(out, 'statusinvest', tb_si)
 
+
 misc.add_planilha(out, 'f_graham', misc.get_tb_num_graham_puro(tb_fundamentus))
+misc.add_planilha(out, 'f_graham_rentaveis', misc.get_tb_num_graham_rentaveis(tb_fundamentus))
+misc.add_planilha(out, 'f_peg', misc.get_tb_peg(tb_fundamentus))
 # misc.add_planilha(out, 'tb_graham_puro', tb_graham_puro)
 # misc.add_planilha(out, 'tb_graham_limpo', tb_graham_limpo)
 # misc.add_planilha(out, 'graham_ajustado', tb_graham_ajustado)
@@ -47,6 +50,9 @@ misc.add_planilha(out, 'f_graham', misc.get_tb_num_graham_puro(tb_fundamentus))
 # Status Invest
 
 misc.add_planilha(out, 'si_graham', misc.get_tb_num_graham_puro(tb_si))
+misc.add_planilha(out, 'si_graham_rentaveis', misc.get_tb_num_graham_rentaveis(tb_si))
+misc.add_planilha(out, 'si_peg', misc.get_tb_peg(tb_si))
+
 
 misc.salva_tabela(out)
 

@@ -15,6 +15,8 @@ LIQUIDEZ_THRESHOLD = 1000
 PL_THRESHOLD = 0
 PVP_THRESHOLD = 0
 
+TAXA_SELIC = 5
+MARGEM_SEGURANCA = .25
 
 class Fontes(Enum):
     FUNDAMENTUS = 0
@@ -62,51 +64,58 @@ def get_tb_num_graham_puro(tb):
     df = df[df['p/l'] > 0]
     df = df[df['p/vp'] > 0]
 
-    ms = .25
+    ms = MARGEM_SEGURANCA
 
     df['vi'] = np.sqrt(22.5 / (df['p/l'] * df['p/vp'])) * df['preco']
     df['ms'] = df['vi'] * (1-ms)
     df['desconto'] = 1 - df['preco'] / df['vi']
     df['upside'] = 100 * ((df['ms'] / df['preco']) - 1)
-    # df['ticket'] = df['papel'].str[:4]
+    df['empresa'] = df['ticker'].str[:4]
 
     df = df.sort_values(by=['desconto'], ascending=False).reset_index()
-    # df = df.groupby(['ticket']).first().reset_index()
-    # df = df.sort_values(by=['desconto'], ascending=True)
+
+    df = df.groupby(['empresa']).first().reset_index()
+    df = df.sort_values(by=['desconto'], ascending=False)
 
     df['vi'] = df['vi'].round(2)
     df['ms'] = df['ms'].round(2)
     df['desconto'] = df['desconto'].round(2)
     df['upside'] = df['upside'].round(2)
 
-    df = df.drop(columns=['index'])
+    df = df.drop(columns=['index', 'empresa'])
 
     return df
 
 
-def get_tb_num_graham_limpa(tb):
+def get_tb_num_graham_rentaveis(tb):
     df = tb.copy()
 
-    df = df[df['cresc5a'] > -5]
+    # df = df[df['cresc5a'] > -5]
+    # df = df[df['ev/ebitda'] >= 0]
     df = df[df['dy'] > 0]
-    df = df[df['ev/ebitda'] >= 0]
     df = df[df['p/l'] > 0]
     df = df[df['p/vp'] > 0]
-    df = df[df['roe'] > 7]
-    df = df[df['liquidez'] > 1000]
+    df = df[df['roe'] > TAXA_SELIC]
 
-    ms = .25
+    ms = MARGEM_SEGURANCA
+
     df['vi'] = np.sqrt(22.5 / (df['p/l'] * df['p/vp'])) * df['preco']
     df['ms'] = df['vi'] * (1-ms)
-    df['desconto'] = df['preco'] / df['vi']
+    df['desconto'] = 1 - df['preco'] / df['vi']
     df['upside'] = 100 * ((df['ms'] / df['preco']) - 1)
-    df['ticket'] = df['papel'].str[:4]
+    df['empresa'] = df['ticker'].str[:4]
 
-    df = df.sort_values(by=['desconto'], ascending=True).reset_index()
-    df = df.groupby(['ticket']).first().reset_index()
-    df = df.sort_values(by=['desconto'], ascending=True)
+    df = df.sort_values(by=['desconto'], ascending=False).reset_index()
 
-    df = df.drop(columns=['ticket', 'index'])
+    df = df.groupby(['empresa']).first().reset_index()
+    df = df.sort_values(by=['desconto'], ascending=False)
+    
+    df['vi'] = df['vi'].round(2)
+    df['ms'] = df['ms'].round(2)
+    df['desconto'] = df['desconto'].round(2)
+    df['upside'] = df['upside'].round(2)
+
+    df = df.drop(columns=['index', 'empresa'])
 
     return df
 
@@ -123,45 +132,24 @@ def get_tb_graham_ajustado(tb):
     df['ms'] = df['vi'] * .75
     df['desconto'] = df['preco'] / df['vi']
     df['upside'] = 100 * ((df['ms'] / df['preco']) - 1)
-    df['ticket'] = df['papel'].str[:4]
+    df['ticker'] = df['papel'].str[:4]
 
     df = df.sort_values(by=['desconto'], ascending=True).reset_index()
-    df = df.groupby(['ticket']).first().reset_index()
+    df = df.groupby(['ticker']).first().reset_index()
     df = df.sort_values(by=['desconto'], ascending=True)
 
-    df = df.drop(columns=['ticket', 'index'])
+    df = df.drop(columns=['ticker', 'index'])
 
     return df
 
 
-# def get_tb_num_graham2(tb):
+# def get_tb_composta(tb):
 #     df = tb.copy()
 
-#     df = df[df['p/l'] > 0]
-#     df = df[df['p/vp'] > 0]
-#     df = df[df['liquidez'] > 1000]
-
-#     df['graham'] = df['preco'] / df['p/l'] * (8.5 + 2*df['cresc5a']/5) * 4.4 / 6.5
-#     df['desconto'] = df['preco'] / df['graham']
-#     df = df[df['preco'] < df['graham']].sort_values(by=['desconto'], ascending=True)
-
-#     return df
-
-# def get_tb_num_graham3(tb):
-#     df = tb.copy()
-
-#     df = df[df['p/l'] > 0]
-#     df = df[df['p/vp'] > 0]
-#     df = df[df['liquidez'] > 1000]
-
-#     df['graham'] = np.sqrt(22.5 / (df['p/l'] * df['p/vp'])) * df['preco']
-#     df['desconto'] = df['preco'] / df['graham']
-#     df['upside'] = 100 * ((df['graham'] / df['preco']) - 1)
-
-#     df = df[df['preco'] < 1.5 * df['graham']]
+#     df = get_tb_num_graham_limpa(df)
 
 #     df = df.sort_values(by=['upside'], ascending=False)
-#     df['rank_upside'] = pd.Series(np.arange(df.shape[0]), index=df.index)
+#     df['rank_graham'] = pd.Series(np.arange(df.shape[0]), index=df.index)
 
 #     df = df.sort_values(by=['p/l'])
 #     df['rank_pl'] = pd.Series(np.arange(df.shape[0]), index=df.index)
@@ -169,35 +157,15 @@ def get_tb_graham_ajustado(tb):
 #     df = df.sort_values(by=['roe'], ascending=False)
 #     df['rank_roe'] = pd.Series(np.arange(df.shape[0]), index=df.index)
 
-#     df['rank'] = df['rank_pl'] + df['rank_roe'] + df['rank_upside']
+#     df = get_tb_psbe(df)
+#     df = df.sort_values(by=['upside'], ascending=False)
+#     df['rank_psbe'] = pd.Series(np.arange(df.shape[0]), index=df.index)
 
+#     df['rank'] = df['rank_pl'] + df['rank_roe'] + \
+#         df['rank_graham'] + df['rank_psbe']
 #     df = df.sort_values(by=['rank'], ascending=True)
 
 #     return df
-
-def get_tb_composta(tb):
-    df = tb.copy()
-
-    df = get_tb_num_graham_limpa(df)
-
-    df = df.sort_values(by=['upside'], ascending=False)
-    df['rank_graham'] = pd.Series(np.arange(df.shape[0]), index=df.index)
-
-    df = df.sort_values(by=['p/l'])
-    df['rank_pl'] = pd.Series(np.arange(df.shape[0]), index=df.index)
-
-    df = df.sort_values(by=['roe'], ascending=False)
-    df['rank_roe'] = pd.Series(np.arange(df.shape[0]), index=df.index)
-
-    df = get_tb_psbe(df)
-    df = df.sort_values(by=['upside'], ascending=False)
-    df['rank_psbe'] = pd.Series(np.arange(df.shape[0]), index=df.index)
-
-    df['rank'] = df['rank_pl'] + df['rank_roe'] + \
-        df['rank_graham'] + df['rank_psbe']
-    df = df.sort_values(by=['rank'], ascending=True)
-
-    return df
 
 
 def get_tb_peg(tb):
@@ -205,12 +173,25 @@ def get_tb_peg(tb):
 
     df = df[df['p/l'] > 0]
     df = df[df['p/vp'] > 0]
-    df = df[df['liquidez'] > 1000]
 
-    df['peg'] = df['p/l'] / df['cresc5a']
-    df = df.sort_values(by=['peg'], ascending=True)
+    if 'cresc5_rl' in df.columns.tolist():
+        df['peg'] = df['p/l'] / df['cresc5_rl']
+    elif 'cagr5_lucro' in df.columns.tolist():
+        df['peg'] = df['p/l'] / df['cagr5_lucro']
+    else:
+        df['peg'] = 0
 
     df = df[df['peg'] > 0]
+    df['peg'] = df['peg'].round(4)
+
+    df['empresa'] = df['ticker'].str[:4]
+
+    df = df.sort_values(by=['peg'], ascending=True).reset_index()
+
+    df = df.groupby(['empresa']).first().reset_index()
+    df = df.sort_values(by=['peg'], ascending=True)
+
+    df = df.drop(columns=['empresa', 'index'])
 
     return df
 
