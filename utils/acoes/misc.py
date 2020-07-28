@@ -15,7 +15,7 @@ LIQUIDEZ_THRESHOLD = 1000
 PL_THRESHOLD = 0
 PVP_THRESHOLD = 0
 
-TAXA_SELIC = 5
+TAXA_SELIC = 3
 MARGEM_SEGURANCA = .25
 
 class Fontes(Enum):
@@ -46,6 +46,41 @@ def add_planilha(writer, nome_planilha, tb):
 def salva_tabela(writer):
     writer.save()
 
+def calcula_planilhas(out, tb, fonte, prefix):
+
+    add_planilha(out, fonte, tb)
+
+    tb_num_graham_puro = get_tb_num_graham_puro(tb)
+    tb_num_graham_rentavel = get_tb_num_graham_rentaveis(tb)
+    tb_num_graham_ajustado = get_tb_graham_ajustado(tb)
+    tb_peg = get_tb_peg(tb)
+    tb_ev_roic = get_tb_ev_roic(tb)
+    tb_psbe = get_tb_psbe(tb)
+    tb_fcd = get_tb_fcd(tb)
+
+    tb_geral = pd.merge(tb_num_graham_puro[['ticker', 'rank']], tb_num_graham_rentavel[['ticker', 'rank']], on='ticker', how='outer')
+    tb_geral = pd.merge(tb_geral, tb_num_graham_ajustado[['ticker', 'rank']], on='ticker', how='outer')
+    tb_geral = pd.merge(tb_geral, tb_peg[['ticker', 'rank']], on='ticker', how='outer')
+    tb_geral = pd.merge(tb_geral, tb_ev_roic[['ticker', 'rank']], on='ticker', how='outer')
+    tb_geral = pd.merge(tb_geral, tb_psbe[['ticker', 'rank']], on='ticker', how='outer')
+    tb_geral = pd.merge(tb_geral, tb_fcd[['ticker', 'rank']], on='ticker', how='outer')
+    tb_geral.columns = ['ticker', 'graham_puro', 'graham_rentavel', 'graham_ajustado', 'peg', 'ev_roic', 'psbe', 'fcd']
+    tb_geral['rank'] = tb_geral.iloc[:, 1:].sum(axis=1)
+    tb_geral['count'] = tb_geral.iloc[:, 1:].count(axis=1)
+
+    tb_geral['mizera_indice'] = tb_geral['rank'] / tb_geral['count']
+    tb_geral = tb_geral.sort_values(by=['mizera_indice']).reset_index()
+    tb_geral = tb_geral.drop(columns=['index'])
+
+    add_planilha(out, f'{prefix}graham', tb_num_graham_puro)
+    add_planilha(out, f'{prefix}graham_rentaveis', tb_num_graham_rentavel)
+    add_planilha(out, f'{prefix}graham_ajustado', tb_num_graham_ajustado)
+    add_planilha(out, f'{prefix}peg', tb_peg)
+    add_planilha(out, f'{prefix}ev_roic', tb_ev_roic)
+    add_planilha(out, f'{prefix}psbe', tb_psbe)
+    add_planilha(out, f'{prefix}fcd', tb_fcd)
+    add_planilha(out, f'{prefix}geral', tb_geral)
+
 
 def _get_outdir():
     return './dados/'
@@ -63,17 +98,15 @@ def get_tb_num_graham_puro(tb):
     # df = df[df['ev/ebitda'] >= 0]
     df = df[df['p/l'] > 0]
     df = df[df['p/vp'] > 0]
-
-    ms = MARGEM_SEGURANCA
+    df = df[df['liquidez'] > LIQUIDEZ_THRESHOLD]
 
     df['vi'] = np.sqrt(22.5 / (df['p/l'] * df['p/vp'])) * df['preco']
-    df['ms'] = df['vi'] * (1-ms)
+    df['ms'] = df['vi'] * (1-MARGEM_SEGURANCA)
     df['desconto'] = 1 - df['preco'] / df['vi']
     df['upside'] = 100 * ((df['ms'] / df['preco']) - 1)
     df['empresa'] = df['ticker'].str[:4]
 
     df = df.sort_values(by=['desconto'], ascending=False).reset_index()
-
     df = df.groupby(['empresa']).first().reset_index()
     df = df.sort_values(by=['desconto'], ascending=False)
 
@@ -81,6 +114,7 @@ def get_tb_num_graham_puro(tb):
     df['ms'] = df['ms'].round(2)
     df['desconto'] = df['desconto'].round(2)
     df['upside'] = df['upside'].round(2)
+    df['rank'] = pd.Series(np.arange(df.shape[0]), index=df.index)
 
     df = df.drop(columns=['index', 'empresa'])
 
@@ -90,30 +124,34 @@ def get_tb_num_graham_puro(tb):
 def get_tb_num_graham_rentaveis(tb):
     df = tb.copy()
 
-    # df = df[df['cresc5a'] > -5]
+    df = df[df['cagr'] > -5]
     # df = df[df['ev/ebitda'] >= 0]
-    df = df[df['dy'] > 0]
+    # df = df[df['dy'] > 0]
+    if 'ev/ebitda' in df:
+        df = df[df['ev/ebitda'] >= 0]
+    if 'ev/ebit' in df:
+        df = df[df['ev/ebit'] >= 0]
+
     df = df[df['p/l'] > 0]
     df = df[df['p/vp'] > 0]
     df = df[df['roe'] > TAXA_SELIC]
-
-    ms = MARGEM_SEGURANCA
+    df = df[df['liquidez'] > LIQUIDEZ_THRESHOLD]
 
     df['vi'] = np.sqrt(22.5 / (df['p/l'] * df['p/vp'])) * df['preco']
-    df['ms'] = df['vi'] * (1-ms)
+    df['ms'] = df['vi'] * (1-MARGEM_SEGURANCA)
     df['desconto'] = 1 - df['preco'] / df['vi']
     df['upside'] = 100 * ((df['ms'] / df['preco']) - 1)
     df['empresa'] = df['ticker'].str[:4]
 
     df = df.sort_values(by=['desconto'], ascending=False).reset_index()
-
     df = df.groupby(['empresa']).first().reset_index()
     df = df.sort_values(by=['desconto'], ascending=False)
-    
+
     df['vi'] = df['vi'].round(2)
     df['ms'] = df['ms'].round(2)
     df['desconto'] = df['desconto'].round(2)
     df['upside'] = df['upside'].round(2)
+    df['rank'] = pd.Series(np.arange(df.shape[0]), index=df.index)
 
     df = df.drop(columns=['index', 'empresa'])
 
@@ -123,22 +161,38 @@ def get_tb_num_graham_rentaveis(tb):
 def get_tb_graham_ajustado(tb):
     df = tb.copy()
 
-    df = df[df['ev/ebitda'] >= 0]
+    if 'ev/ebitda' in df:
+        df = df[df['ev/ebitda'] >= 0]
+    if 'ev/ebit' in df:
+        df = df[df['ev/ebit'] >= 0]
     df = df[df['p/l'] > 0]
     df = df[df['p/vp'] > 0]
+    df = df[df['liquidez'] > LIQUIDEZ_THRESHOLD]
 
-    tx_livre_risco = 6
-    df['vi'] = (df['preco']/df['p/l']) * (7 + df['cresc5a']) * 4.4 / 6
-    df['ms'] = df['vi'] * .75
-    df['desconto'] = df['preco'] / df['vi']
+
+    if df['cagr'] < TAXA_SELIC:
+        cagr = TAXA_SELIC
+    else:
+        cagr = df['cagr']
+
+    # df['vi'] = (df['preco']/df['p/l']) * (7 + cagr) * 4.4 / 6
+    df['vi'] = (df['preco']/df['p/l']) * (6 + cagr)
+    df['ms'] = df['vi'] *  (1-MARGEM_SEGURANCA)
+    df['desconto'] = 1 - df['preco'] / df['vi']
     df['upside'] = 100 * ((df['ms'] / df['preco']) - 1)
-    df['ticker'] = df['papel'].str[:4]
+    df['empresa'] = df['ticker'].str[:4]
 
-    df = df.sort_values(by=['desconto'], ascending=True).reset_index()
-    df = df.groupby(['ticker']).first().reset_index()
-    df = df.sort_values(by=['desconto'], ascending=True)
+    df = df.sort_values(by=['desconto'], ascending=False).reset_index()
+    df = df.groupby(['empresa']).first().reset_index()
+    df = df.sort_values(by=['desconto'], ascending=False)
 
-    df = df.drop(columns=['ticker', 'index'])
+    df['vi'] = df['vi'].round(2)
+    df['ms'] = df['ms'].round(2)
+    df['desconto'] = df['desconto'].round(2)
+    df['upside'] = df['upside'].round(2)
+    df['rank'] = pd.Series(np.arange(df.shape[0]), index=df.index)
+
+    df = df.drop(columns=['empresa', 'index'])
 
     return df
 
@@ -171,13 +225,12 @@ def get_tb_graham_ajustado(tb):
 def get_tb_peg(tb):
     df = tb.copy()
 
+    df = df[df['liquidez'] > LIQUIDEZ_THRESHOLD]
     df = df[df['p/l'] > 0]
     df = df[df['p/vp'] > 0]
 
-    if 'cresc5_rl' in df.columns.tolist():
-        df['peg'] = df['p/l'] / df['cresc5_rl']
-    elif 'cagr5_lucro' in df.columns.tolist():
-        df['peg'] = df['p/l'] / df['cagr5_lucro']
+    if 'cagr' in df.columns.tolist():
+        df['peg'] = df['p/l'] / df['cagr']
     else:
         df['peg'] = 0
 
@@ -187,9 +240,11 @@ def get_tb_peg(tb):
     df['empresa'] = df['ticker'].str[:4]
 
     df = df.sort_values(by=['peg'], ascending=True).reset_index()
-
     df = df.groupby(['empresa']).first().reset_index()
     df = df.sort_values(by=['peg'], ascending=True)
+
+    df['peg'] = df['peg'].round(4)
+    df['rank'] = pd.Series(np.arange(df.shape[0]), index=df.index)
 
     df = df.drop(columns=['empresa', 'index'])
 
@@ -200,11 +255,12 @@ def get_tb_bazim(tb):
     df = tb.copy()
 
     df = df[df['dy'] > 6]
-    df = df[df['liquidez'] > 1000]
+    df = df[df['liquidez'] > LIQUIDEZ_THRESHOLD]
     df = df[df['div/pat'] < 3]
 
     df['desconto'] = df['p/l'] / 16.666
     df = df.sort_values(by=['desconto'], ascending=True)
+
 
     return df
 
@@ -212,12 +268,17 @@ def get_tb_bazim(tb):
 def get_tb_ev_roic(tb):
     df = tb.copy()
 
-    df = df[df['liquidez'] > 1000]
+    df = df[df['liquidez'] > LIQUIDEZ_THRESHOLD]
     df = df[df['p/l'] > 0]
     df = df[df['p/vp'] > 0]
-    df = df[df['ev/ebitda'] >= 0]
+    if 'ev/ebitda' in df:
+        df = df[df['ev/ebitda'] >= 0]
+        df = df.sort_values(by=['ev/ebitda'])
 
-    df = df.sort_values(by=['ev/ebitda'])
+    if 'ev/ebit' in df:
+        df = df[df['ev/ebit'] >= 0]
+        df = df.sort_values(by=['ev/ebit'])
+
     df['rank_ev'] = pd.Series(np.arange(df.shape[0]), index=df.index)
 
     df = df.sort_values(by=['roic'], ascending=False)
@@ -226,19 +287,24 @@ def get_tb_ev_roic(tb):
     df['rank_ev_roic'] = df['rank_ev'] + df['rank_roic']
     df = df.sort_values(by=['rank_ev_roic'])
 
+    df['rank'] = pd.Series(np.arange(df.shape[0]), index=df.index)
+
     return df
 
 
 def get_tb_psbe(tb):
     df = tb.copy()
 
-    df = df[df['liquidez'] > 1000]
+    df = df[df['liquidez'] > LIQUIDEZ_THRESHOLD]
     df = df[df['p/l'] > 0]
     df = df[df['p/vp'] > 0]
-    df = df[df['ev/ebitda'] >= 0]
     # df = df[df['dy'] > 0]
-    df = df[df['roe'] > 5]
-    df = df[df['cresc5a'] > -5]
+    df = df[df['roe'] > TAXA_SELIC]
+    df = df[df['cagr'] > -5]
+    if 'ev/ebitda' in df:
+        df = df[df['ev/ebitda'] >= 0]
+    if 'ev/ebit' in df:
+        df = df[df['ev/ebit'] >= 0]
 
     # df = df.sort_values(by=['ev/ebitda'])
     # df['rank_ev'] = pd.Series(np.arange(df.shape[0]), index=df.index)
@@ -249,16 +315,20 @@ def get_tb_psbe(tb):
     # df['rank_ev_roic'] = df['rank_ev'] + df['rank_roic']
     # df = df.sort_values(by=['rank_ev_roic'])
 
+    # tabela SI
+    if 'patrimonio' not in df:
+        df['patrimonio'] = df['preco'] / df['p/vp']
+
     df['ll'] = (df['roe']/100) * df['patrimonio']
-    df['rl'] = df['ll'] / (df['mrg. líq.']/100)
+    df['rl'] = df['ll'] / (df['margemLiquida']/100)
     df['n'] = df['ll'] * df['p/l'] / df['preco']
     df['vm'] = df['n'] * df['preco']
     cte = 7
     # cte = 5.891
 
     margem_seguranca = .25
-    df['psbe'] = (df['patrimonio'] + df['rl'] + df['ll'] * np.exp((df['mrg. líq.']/100)
-                                                                  * -1 * np.log(np.abs(df['mrg. líq.']/100)) * cte * np.sign(df['mrg. líq.']))) / df['n']
+    df['psbe'] = (df['patrimonio'] + df['rl'] + df['ll'] * np.exp((df['margemLiquida']/100)
+                                                                  * -1 * np.log(np.abs(df['margemLiquida']/100)) * cte * np.sign(df['margemLiquida']))) / df['n']
     df['ms'] = df['psbe'] * (1 - margem_seguranca)
     df['upside'] = 100 * ((df['ms'] / df['preco']) - 1)
 
@@ -266,13 +336,15 @@ def get_tb_psbe(tb):
     df['ms'] = df['ms'].round(2)
     df['upside'] = df['upside'].round(2)
 
-    df['ticket'] = df['papel'].str[:4]
+    df['empresa'] = df['ticker'].str[:4]
 
     df = df.sort_values(by=['upside'], ascending=False).reset_index()
-    df = df.groupby(['ticket']).first().reset_index()
+    df = df.groupby(['empresa']).first().reset_index()
 
     df = df.sort_values(by=['upside'], ascending=False)
-    df = df.drop(columns=['ll', 'rl', 'n', 'vm', 'ticket', 'index'])
+    df = df.drop(columns=['ll', 'rl', 'n', 'vm', 'empresa', 'index'])
+
+    df['rank'] = pd.Series(np.arange(df.shape[0]), index=df.index)
 
     return df
 
@@ -280,19 +352,22 @@ def get_tb_psbe(tb):
 def get_tb_fcd(tb):
     df = tb.copy()
 
-    df = df[df['liquidez'] > 1000]
+    df = df[df['liquidez'] > LIQUIDEZ_THRESHOLD]
     df = df[df['p/l'] > 0]
     df = df[df['p/vp'] > 0]
-    df = df[df['ev/ebitda'] >= 0]
     df = df[df['roe'] > 5]
-    df = df[df['cresc5a'] > -5]
+    df = df[df['cagr'] > -5]
+    if 'ev/ebitda' in df:
+        df = df[df['ev/ebitda'] >= 0]
+    if 'ev/ebit' in df:
+        df = df[df['ev/ebit'] >= 0]
 
     df['lpa'] = df['preco'] / df['p/l']
     tx_desconto = .09
     tx_perpetuidade = .03
     delta = tx_desconto - tx_perpetuidade
 
-    tx_crescimento = df['cresc5a']/100
+    tx_crescimento = df['cagr']/100
     tx_crescimento[tx_crescimento > 30] *= .6
 
     crescimento_ano_1 = tx_crescimento
@@ -314,9 +389,7 @@ def get_tb_fcd(tb):
     df['preco_ano_4'] = df['lpa'] * (f1 + f2 + f3 + f4 * fator_fixo)
     df['preco_ano_5'] = df['lpa'] * (f1 + f2 + f3 + f4 + f5 * fator_fixo)
 
-    margem_seguranca = .25
-
-    df['ms'] = df['preco_ano_5'] * (1 - margem_seguranca)
+    df['ms'] = df['preco_ano_5'] * (1 - MARGEM_SEGURANCA)
     df['upside'] = 100 * ((df['ms'] / df['preco']) - 1)
 
     df['lpa'] = df['lpa'].round(2)
@@ -328,13 +401,15 @@ def get_tb_fcd(tb):
     df['ms'] = df['ms'].round(2)
     df['upside'] = df['upside'].round(2)
 
-    df['ticket'] = df['papel'].str[:4]
+    df['empresa'] = df['ticker'].str[:4]
 
     df = df.sort_values(by=['upside'], ascending=False).reset_index()
-    df = df.groupby(['ticket']).first().reset_index()
-
+    df = df.groupby(['empresa']).first().reset_index()
     df = df.sort_values(by=['upside'], ascending=False)
-    df = df.drop(columns=['ticket', 'index'])
+
+    df['rank'] = pd.Series(np.arange(df.shape[0]), index=df.index)
+
+    df = df.drop(columns=['empresa', 'index'])
 
     return df
 
@@ -342,20 +417,20 @@ def get_tb_fcd(tb):
 def get_tb_psbe_geral(tb):
     df = tb.copy()
 
-    df = df[df['liquidez'] > 1000]
+    df = df[df['liquidez'] > LIQUIDEZ_THRESHOLD]
     df = df[df['p/l'] > 0]
     df = df[df['p/vp'] > 0]
 
     df['ll'] = (df['roe']/100) * df['patrimonio']
-    df['rl'] = df['ll'] / (df['mrg. líq.']/100)
+    df['rl'] = df['ll'] / (df['margemLiquida']/100)
     df['n'] = df['ll'] * df['p/l'] / df['preco']
     df['vm'] = df['n'] * df['preco']
     cte = 7
     # cte = 5.891
 
     margem_seguranca = .25
-    df['psbe'] = (df['patrimonio'] + df['rl'] + df['ll'] * np.exp((df['mrg. líq.']/100)
-                                                                  * -1 * np.log(np.abs(df['mrg. líq.']/100)) * cte * np.sign(df['mrg. líq.']))) / df['n']
+    df['psbe'] = (df['patrimonio'] + df['rl'] + df['ll'] * np.exp((df['margemLiquida']/100)
+                                                                  * -1 * np.log(np.abs(df['margemLiquida']/100)) * cte * np.sign(df['margemLiquida']))) / df['n']
     df['ms'] = df['psbe'] * (1 - margem_seguranca)
     df['upside'] = 100 * ((df['ms'] / df['preco']) - 1)
 
@@ -363,12 +438,12 @@ def get_tb_psbe_geral(tb):
     df['ms'] = df['ms'].round(2)
     df['upside'] = df['upside'].round(2)
 
-    df['ticket'] = df['papel'].str[:4]
+    df['empresa'] = df['ticker'].str[:4]
 
     df = df.sort_values(by=['upside'], ascending=False).reset_index()
-    df = df.groupby(['ticket']).first().reset_index()
+    df = df.groupby(['empresa']).first().reset_index()
 
     df = df.sort_values(by=['upside'], ascending=False)
-    df = df.drop(columns=['ll', 'rl', 'n', 'vm', 'ticket', 'index'])
+    df = df.drop(columns=['ll', 'rl', 'n', 'vm', 'empresa', 'index'])
 
     return df

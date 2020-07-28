@@ -34,7 +34,6 @@ def get_url(setor):
 def _conv_column(col):
     return pd.to_numeric(col.str.replace('.', '').str.replace('%', '').str.replace(',', '.'))
 
-
 def get_table(setor):
 
     url = get_url(setor)
@@ -42,6 +41,7 @@ def get_table(setor):
     headers = {
         'Pragma': 'no-cache',
         'Cache-Control': 'no-cache',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.89 Safari/537.36',
     }
 
     response = requests.get(url, headers=headers)
@@ -60,7 +60,7 @@ def get_table(setor):
         'liq.2meses': 'liquidez',
         'patrim. líq': 'pl',
         'dív.brut/ patrim.': 'db/pl',
-        'cresc. rec.5a': 'cresc5_rl'
+        'cresc. rec.5a': 'cagr'
     }
     tb = tb.rename(index=str, columns=dicionario)
 
@@ -71,10 +71,10 @@ def get_table(setor):
     tb['margemLiquida'] = _conv_column(tb['margemLiquida'])
     tb['roic'] = _conv_column(tb['roic'])
     tb['roe'] = _conv_column(tb['roe'])
-    tb['cresc5_rl'] = _conv_column(tb['cresc5_rl'])
+    tb['cagr'] = _conv_column(tb['cagr'])
 
     ordem = ['ticker', 'preco', 'p/l', 'p/vp', 'ev/ebitda',
-             'dy', 'roe', 'margemLiquida', 'margemEbit', 'cresc5_rl']
+             'dy', 'roe', 'margemLiquida', 'margemEbit', 'cagr']
     resto = list(set(tb.columns.tolist()) - set(ordem))
 
     tb = tb[ordem + resto]
