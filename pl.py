@@ -21,7 +21,7 @@ def formata_data(dado):
     return [datetime(ano, mes, dia), dado[1]]
 
 
-ativo = 'MDIA3'
+ativo = 'TRIS3'
 url = f'https://www.oceans14.com.br/rendaVariavel/respostaAjax/gHistoricoPl.aspx?papel={ativo}&periodo=5a'
 
 headers = {
@@ -47,7 +47,7 @@ if response.status_code == 200:
         dados = list(map(lambda x: [x['c'][0]['v'], x['c'][1]['v']], data['rows']))
         dados = list(map(formata_data, dados))
 
-        df = pd.DataFrame(dados, columns=['data', 'pl']) 
+        df = pd.DataFrame(dados, columns=['data', 'pl'])
         # df['3d'] = df['pl'].rolling(3).mean()
         # df['7d'] = df['pl'].rolling(7).mean()
         df['30d'] = df['pl'].rolling(30).mean()
