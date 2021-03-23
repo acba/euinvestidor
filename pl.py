@@ -1,6 +1,9 @@
 # encoding=utf8
 import os
+import sys 
+
 from datetime import datetime
+import ipdb
 
 import pandas as pd
 import numpy as np
@@ -11,18 +14,37 @@ import matplotlib.pyplot as plt
 def formata_data(dado):
     data = dado[0]
 
-    tmp = data.split('(')[1]
-    segmentacao = tmp.split(',')
+    segmentacao = data.split('/')
+    
+    dia = int(segmentacao[0])
+    mes = int(segmentacao[1])
+    ano = int(segmentacao[2])
 
-    ano = int(segmentacao[0])
-    mes = int(segmentacao[1]) + 1
-    dia = int(segmentacao[2])
+    dado_normalizado = dado[1] if dado[1] > 0 else 0
 
-    return [datetime(ano, mes, dia), dado[1]]
+    try:
+        res = [datetime(ano, mes, dia), dado_normalizado]
+    except:
+        import ipdb; ipdb.set_trace()
 
+    return res
 
-ativo = 'TRIS3'
-url = f'https://www.oceans14.com.br/rendaVariavel/respostaAjax/gHistoricoPl.aspx?papel={ativo}&periodo=5a'
+def get_recomendacao(dado):
+    if dado < -15:
+        return 'COMPRA FORTE'
+    elif dado < -5:
+        return 'COMPRA'
+    elif dado >= -5 and dado < 5:
+        return 'NEUTRO'
+    elif dado < 15:
+        return 'VENDA'
+    else:
+        return 'VENDA FORTE'
+
+ativo = sys.argv[1] if len(sys.argv) >= 2 and sys.argv[1] is not None else 'SAPR4'
+periodo = sys.argv[2] if len(sys.argv) >= 3 and sys.argv[2] is not None else '5a'
+
+url = f'https://www.oceans14.com.br/rendaVariavel/respostaAjax/gHistoricoPl.aspx?papel={ativo}&periodo={periodo}'
 
 headers = {
     'pragma': 'no-cache',
@@ -44,7 +66,7 @@ if response.status_code == 200:
     data = response.json()
 
     if data is not None:
-        dados = list(map(lambda x: [x['c'][0]['v'], x['c'][1]['v']], data['rows']))
+        dados = list(map(lambda x: [x['data'], x['pl']], data))
         dados = list(map(formata_data, dados))
 
         df = pd.DataFrame(dados, columns=['data', 'pl'])
@@ -57,16 +79,30 @@ if response.status_code == 200:
 
         pl_min = df['pl'].min()
         pl_max = df['pl'].max()
-
-        print(f'PL - [{pl_min} {pl_max}]')
-
         ultimo = df.tail(1)
-        # import ipdb; ipdb.set_trace()
-        print()
-        print(f'Sobrepreço em relação ao PLmin:',  ultimo['pl'] / pl_min)
-        print(f'Sobrepreço em relação ao PLmax:', ultimo['pl'] / pl_max)
-        print()
-        print(f'Sobrepreço em relação ao PL30d:', ultimo['pl'] / ultimo['30d'])
-        print(f'Sobrepreço em relação ao PL90d:', ultimo['pl'] / ultimo['90d'])
-        print(f'Sobrepreço em relação ao PL200d:', ultimo['pl'] / ultimo['200d'])
 
+        print(f'PL Atual - {ultimo["pl"][0]}')
+        print(f'PLMin PLMax - [{pl_min} {pl_max}]')
+        print(f'PL30d PL90d PL200d - [{np.around(ultimo["30d"][0], decimals=2)} {np.around(ultimo["90d"][0], decimals=2)} {np.around(ultimo["200d"][0], decimals=2)}]')
+
+        s_plmin = np.around(((ultimo['pl'][0]/pl_min - 1) * 100), decimals=2)
+        s_plmax = np.around(((ultimo['pl'][0]/pl_max - 1) * 100), decimals=2)
+        s_pl30d = np.around(((ultimo['pl'][0]/ultimo['30d'][0] - 1) * 100), decimals=2)
+        s_pl90d = np.around(((ultimo['pl'][0]/ultimo['90d'][0] - 1) * 100), decimals=2)
+        s_pl200d = np.around(((ultimo['pl'][0]/ultimo['200d'][0] - 1) * 100), decimals=2)
+        
+        print()
+        print(f'Sobrepreço em relação ao PLmin: {s_plmin}%')
+        print(f'Sobrepreço em relação ao PLmax: {s_plmax}%')
+        print()
+        print(f'{get_recomendacao(s_pl30d)} - Sobrepreço em relação ao PL30d : {s_pl30d}%')
+        print(f'{get_recomendacao(s_pl90d)} - Sobrepreço em relação ao PL90d : {s_pl90d}%')
+        print(f'{get_recomendacao(s_pl200d)} - Sobrepreço em relação ao PL200d: {s_pl200d}%')
+
+        df.to_excel(f'dados/{ativo}.xlsx')
+
+        df.plot()
+        plt.xlabel('Tempo')
+        plt.ylabel('Preço/Lucro')
+        plt.title(f'{ativo}'.upper())
+        plt.savefig(f'dados/{ativo}.svg', format='svg', dpi=1200)

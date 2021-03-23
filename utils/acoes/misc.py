@@ -11,7 +11,7 @@ import utils.acoes.fundamentus as fundamentus
 import utils.acoes.statusinvest as statusinvest
 
 ROE_THRESHOLD = 5
-LIQUIDEZ_THRESHOLD = 1000
+LIQUIDEZ_THRESHOLD = 20000
 PL_THRESHOLD = 0
 PVP_THRESHOLD = 0
 
@@ -52,19 +52,20 @@ def calcula_planilhas(out, tb, fonte, prefix):
 
     tb_num_graham_puro = get_tb_num_graham_puro(tb)
     tb_num_graham_rentavel = get_tb_num_graham_rentaveis(tb)
-    tb_num_graham_ajustado = get_tb_graham_ajustado(tb)
+    # tb_num_graham_ajustado = get_tb_graham_ajustado(tb)
     tb_peg = get_tb_peg(tb)
     tb_ev_roic = get_tb_ev_roic(tb)
     tb_psbe = get_tb_psbe(tb)
     tb_fcd = get_tb_fcd(tb)
 
     tb_geral = pd.merge(tb_num_graham_puro[['ticker', 'rank']], tb_num_graham_rentavel[['ticker', 'rank']], on='ticker', how='outer')
-    tb_geral = pd.merge(tb_geral, tb_num_graham_ajustado[['ticker', 'rank']], on='ticker', how='outer')
+    # tb_geral = pd.merge(tb_geral, tb_num_graham_ajustado[['ticker', 'rank']], on='ticker', how='outer')
     tb_geral = pd.merge(tb_geral, tb_peg[['ticker', 'rank']], on='ticker', how='outer')
     tb_geral = pd.merge(tb_geral, tb_ev_roic[['ticker', 'rank']], on='ticker', how='outer')
     tb_geral = pd.merge(tb_geral, tb_psbe[['ticker', 'rank']], on='ticker', how='outer')
     tb_geral = pd.merge(tb_geral, tb_fcd[['ticker', 'rank']], on='ticker', how='outer')
-    tb_geral.columns = ['ticker', 'graham_puro', 'graham_rentavel', 'graham_ajustado', 'peg', 'ev_roic', 'psbe', 'fcd']
+    # tb_geral.columns = ['ticker', 'graham_puro', 'graham_rentavel', 'graham_ajustado', 'peg', 'ev_roic', 'psbe', 'fcd']
+    tb_geral.columns = ['ticker', 'graham_puro', 'graham_rentavel', 'peg', 'ev_roic', 'psbe', 'fcd']
     tb_geral['rank'] = tb_geral.iloc[:, 1:].sum(axis=1)
     tb_geral['count'] = tb_geral.iloc[:, 1:].count(axis=1)
 
@@ -74,7 +75,7 @@ def calcula_planilhas(out, tb, fonte, prefix):
 
     add_planilha(out, f'{prefix}graham', tb_num_graham_puro)
     add_planilha(out, f'{prefix}graham_rentaveis', tb_num_graham_rentavel)
-    add_planilha(out, f'{prefix}graham_ajustado', tb_num_graham_ajustado)
+    # add_planilha(out, f'{prefix}graham_ajustado', tb_num_graham_ajustado)
     add_planilha(out, f'{prefix}peg', tb_peg)
     add_planilha(out, f'{prefix}ev_roic', tb_ev_roic)
     add_planilha(out, f'{prefix}psbe', tb_psbe)
@@ -271,12 +272,13 @@ def get_tb_ev_roic(tb):
     df = df[df['liquidez'] > LIQUIDEZ_THRESHOLD]
     df = df[df['p/l'] > 0]
     df = df[df['p/vp'] > 0]
+    
     if 'ev/ebitda' in df:
-        df = df[df['ev/ebitda'] >= 0]
+        df = df[df['ev/ebitda'] > 0]
         df = df.sort_values(by=['ev/ebitda'])
 
     if 'ev/ebit' in df:
-        df = df[df['ev/ebit'] >= 0]
+        df = df[df['ev/ebit'] > 0]
         df = df.sort_values(by=['ev/ebit'])
 
     df['rank_ev'] = pd.Series(np.arange(df.shape[0]), index=df.index)

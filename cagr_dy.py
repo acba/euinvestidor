@@ -10,7 +10,13 @@ def get_url(ativo):
 
 def get_table(ativo):
     url = get_url(ativo)
-    res = requests.get(url)
+    headers = {
+        'Pragma': 'no-cache',
+        'Cache-Control': 'no-cache',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.89 Safari/537.36',
+    }
+
+    res = requests.get(url, headers=headers)
 
     df = pd.read_html(res.text, decimal=",", thousands=".", parse_dates=[0])[0]
     df.columns = ['data', 'valor', 'tipo', 'fator']
@@ -24,7 +30,7 @@ def get_table(ativo):
     return df
 
 
-def cagr(anual, periodo='all'):
+def calc_cagr(anual, periodo='all'):
     if periodo == 'all':
         periodo = anual.shape[0] - 1
 
@@ -32,7 +38,7 @@ def cagr(anual, periodo='all'):
         return np.nan
 
     fim = anual.iloc[-1, 0]
-    idx = -1 * periodo - 1
+    idx = -1 * periodo
     inicio = anual.iloc[idx, 0]
 
     return [100 * ((fim/inicio)**(1/periodo) - 1), inicio, fim]
@@ -43,7 +49,7 @@ def mt_cagr(anual):
 
     d = {}
     for p in periodos:
-        d[str(p)] = cagr(anual, p)
+        d[str(p)] = calc_cagr(anual, p)
 
     df = pd.DataFrame(d)
     df.columns = ['1yr', '3yr', '5yr', '10yr', 'todos']
@@ -61,7 +67,7 @@ def mt_ddm(cagr, div_anual):
     return 100 * ultimo_div / (tx_retorno - tx_crescimento)
 
 
-ativo = 'TAEE11'
+ativo = 'SAPR4'
 
 df = get_table(ativo)
 

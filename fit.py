@@ -1,5 +1,6 @@
 # encoding=utf8
 import os
+import sys 
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -25,7 +26,12 @@ dividendos = [
   168.9, 190, 301.2,
   608.2, 145.5, 274.1,
   276.5, 337.2, 515.1,
-  132.5, 134.2, 318.1
+  132.5, 134.2, 318.1,
+  315.4, 156.0, 321.8,
+  327.5, 520.8, 327.8,
+  347.2, 214.1, 180.6,
+  538.2, 391.6, 140.7,
+  623.2, 377.2
 ]
 
 x = np.arange(len(dividendos))
@@ -51,6 +57,7 @@ div = np.concatenate((dividendos, np.zeros(len(x) - len(dividendos))))
 
 mmtrimestre = np.concatenate((np.zeros(2), moving_average(dividendos), np.zeros(len(x) - len(dividendos)) ))
 mmsemestre = np.concatenate((np.zeros(5), moving_average(dividendos, 6), np.zeros(len(x) - len(dividendos)) ))
+mmanual = np.concatenate((np.zeros(11), moving_average(dividendos, 12), np.zeros(len(x) - len(dividendos)) ))
 
 
 fig, ax = plt.subplots()
@@ -60,6 +67,7 @@ line1, = ax.plot(x_date, y1d, label='Fit 1D')
 # line1, = ax.plot(x_date, exp, label='Exp')
 line1, = ax.plot(x_date, mmtrimestre, label='Média Móvel 3t')
 line1, = ax.plot(x_date, mmsemestre, label='Média Móvel 6t')
+line1, = ax.plot(x_date, mmanual, label='Média Móvel 12t')
 # line1, = ax.plot(x_date, y3d, label='Fit 3D')
 # line1, = ax.plot(x_date, y4d, label='Fit 4D')
 
