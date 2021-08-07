@@ -41,8 +41,11 @@ def get_recomendacao(dado):
     else:
         return 'VENDA FORTE'
 
-ativo = sys.argv[1] if len(sys.argv) >= 2 and sys.argv[1] is not None else 'SAPR4'
-periodo = sys.argv[2] if len(sys.argv) >= 3 and sys.argv[2] is not None else '5a'
+# ativo = sys.argv[1] if len(sys.argv) >= 2 and sys.argv[1] is not None else 'CPLE3'
+# periodo = sys.argv[2] if len(sys.argv) >= 3 and sys.argv[2] is not None else '5a'
+
+ativo   = 'BBAS3'
+periodo = '5a'
 
 url = f'https://www.oceans14.com.br/rendaVariavel/respostaAjax/gHistoricoPl.aspx?papel={ativo}&periodo={periodo}'
 

@@ -19,19 +19,29 @@ def exponenial_func(x, a, b, c):
     return a*np.exp(-b*x)+c
 
 dividendos = [
-  0, 22.6, 76.3,
-  140, 152.1, 204.4,
-  177.4, 134.2, 285.8,
-  157.7, 121.8, 236.5, 
-  168.9, 190, 301.2,
-  608.2, 145.5, 274.1,
-  276.5, 337.2, 515.1,
-  132.5, 134.2, 318.1,
-  315.4, 156.0, 321.8,
-  327.5, 520.8, 327.8,
-  347.2, 214.1, 180.6,
-  538.2, 391.6, 140.7,
-  623.2, 377.2
+  0, 
+  
+  # 2018
+  22.6, 76.3, 140,
+  152.1, 204.4, 177.4,
+  134.2, 285.8, 157.7,
+  121.8, 236.5, 168.9,
+  
+  # 2019
+  190, 301.2, 608.2,
+  145.5, 274.1, 276.5,
+  337.2, 515.1, 132.5,
+  134.2, 315.42, 156.01,
+  
+  # 2020
+  321.8, 327.5, 520.8,
+  327.8, 347.2, 214.1, 
+  180.6, 542.2, 391.6,
+  143.6, 627.3, 383.04,
+  
+  # 2021
+  396.32, 433.94, 473.22,
+  337.45, 1015.42, 1234.46
 ]
 
 x = np.arange(len(dividendos))
@@ -63,7 +73,7 @@ mmanual = np.concatenate((np.zeros(11), moving_average(dividendos, 12), np.zeros
 fig, ax = plt.subplots()
 line1, = ax.plot(x_date, div, label='Dividendos')
 line1, = ax.plot(x_date, y1d, label='Fit 1D')
-# line1, = ax.plot(x_date, y2d, label='Fit 2D')
+line1, = ax.plot(x_date, y2d, label='Fit 2D')
 # line1, = ax.plot(x_date, exp, label='Exp')
 line1, = ax.plot(x_date, mmtrimestre, label='Média Móvel 3t')
 line1, = ax.plot(x_date, mmsemestre, label='Média Móvel 6t')
